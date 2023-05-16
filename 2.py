@@ -45,6 +45,8 @@ with open('absensi.csv', mode='a', newline='') as file_csv:
                     # Tampilkan nama di sekitar rectangle
                     cv2.putText(img, nama, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
+
+
                 # Tampilkan gambar dengan wajah yang terdeteksi
                 cv2.imshow('Deteksi Wajah', img)
                 cv2.waitKey(0)

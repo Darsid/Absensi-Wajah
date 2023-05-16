@@ -1,57 +1,82 @@
 import cv2
 import numpy as np
 import csv
+import fnmatch
 import os
+import datetime
 
-# Create a face cascade
-face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_alt2.xml")
+# Inisialisasi CascadeClassifier untuk deteksi wajah
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
-# Start the webcam
-cap = cv2.VideoCapture(0)
+# Daftar nama orang yang terdaftar
+nama_orang = ['DapaArhama']
 
-while True:
-  # Get a frame from the webcam
-  ret, frame = cap.read()
+# Membuka webcam
+video_capture = cv2.VideoCapture(0)
 
-  # Convert the frame to grayscale
-  grayscale_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+# Membuka file CSV untuk mencatat absensi
+with open('absensi.csv', mode='a', newline='') as file_csv:
+    csv_writer = csv.writer(file_csv)
+    csv_writer.writerow(['Nama', 'Waktu Absen'])
 
-  # Detect faces in the frame
-  faces = face_cascade.detectMultiScale(grayscale_frame, scaleFactor=1.1, minNeighbors=5)
+    while True:
+        # Membaca frame dari webcam
+        ret, frame = video_capture.read()
 
-  # For each face in the frame
-  for face in faces:
-    # Find the face encoding
-    face_encoding = np.array([
-      face[0], face[1], face[2], face[3]
-    ])
+        # Mengubah frame ke dalam skala abu-abu
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Find the name of the person in the face
-    person_name = "DapaArhama"
-    face_encodings = []
+        # Mendeteksi wajah pada frame
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-    for i in range(len(face_encodings)):
-      if np.array_equal(face_encodings[i], face_encoding):
-        person_name = os.path.splitext(os.path.basename("dataset/" + str(i + 1) + ".jpg"))[0]
-        break
+        # Loop melalui setiap wajah yang terdeteksi
+        for (x, y, w, h) in faces:
+            # Gambar kotak di sekitar wajah
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-    # Write the person's name to the CSV file
-    with open("absensi.csv", "a") as csv_file:
-      csv_writer = csv.writer(csv_file)
-      csv_writer.writerow([person_name])
+            # Loop melalui setiap nama orang yang terdaftar
+            for i in range(len(nama_orang)):
+                # Loop melalui file dalam direktori "data_wajah"
+                for file in os.listdir('data_wajah'):
+                    # Cocokkan nama file gambar dengan nama orang yang terdaftar
+                    if fnmatch.fnmatch(file, f"*{nama_orang[i]}*.jpg"):
+                        # Baca gambar
+                        img = cv2.imread(os.path.join('data_wajah', file))
 
-  # Display the frame
-  cv2.imshow("Attendance", frame)
+                        # Ubah gambar menjadi grayscale
+                        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-  # Wait for a key press
-  key = cv2.waitKey(1)
+                        # Deteksi wajah pada gambar
+                        faces_img = face_cascade.detectMultiScale(gray_img, 1.3, 5)
 
-  # If the key `q` is pressed, stop the program
-  if key == ord("q"):
-    break
+                        # Loop melalui setiap wajah yang terdeteksi pada gambar
+                        for (x_img, y_img, w_img, h_img) in faces_img:
+                            # Bandingkan posisi wajah pada frame dengan posisi wajah pada gambar
+                            if x > x_img and y > y_img and x + w < x_img + w_img and y + h < y_img + h_img:
+                                # Dapatkan waktu absen
+                                waktu_absen = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Close the webcam
-cap.release()
+                                # Tulis nama dan waktu absen ke file CSV
+                                csv_writer.writerow([nama_orang[i], waktu_absen])
 
-# Destroy all windows
+                                # Tampilkan nama di sekitar rectangle
+                                cv2.putText(frame, nama_orang[i], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                                break
+                        else:
+                            # Tampilkan "Tidak Dikenal" jika wajah tidak cocok dengan gambar yang terdaftar
+                            cv2.putText(frame, 'Tidak Dikenal', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+                            break
+
+                            # Tampilkan frame dengan wajah yang terdeteksi
+                            cv2.imshow('Webcam', frame)
+
+                      # Jika tombol 'q' ditekan, keluar dari loop
+                        cv2.imshow('Deteksi Wajah', frame)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                              break
+# Tampilkan gambar dengan wajah yang terdeteksi
+
+
+
+video_capture.release()
 cv2.destroyAllWindows()
